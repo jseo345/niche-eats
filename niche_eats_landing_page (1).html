@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Niche Eats - Oahu's Hidden Gem Local Food Finder</title>
+  
+  <!-- OpenStreetMap / Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTLZBo=" crossorigin=""/>
+
+  <style>
+    /* Reset & CSS Design Tokens - Soft Green & Butter Yellow Theme */
+    :root {
+      --bg-main: #FFFDF5;       /* Warm soft cream */
+      --bg-card: #FFFFFF;
+      --text-dark: #2A1810;     /* Deep warm dark brown for high contrast */
+      --text-muted: #5C4336;    /* Soft cocoa text */
+      --brand-primary: #3B7A57; /* Soft sage green */
+      --brand-primary-hover: #2F6245; /* Darker green for hover/active */
+      --brand-yellow: #FFF2B2;  /* Rich butter yellow */
+      --brand-yellow-light: #FEF9D7; /* Light butter yellow tint */
+      --brand-dark: #1B3B2B;    /* Deep forest green for dark headers/sections */
+      --border-light: #F4E8C1;  /* Soft butter yellow border */
+      --radius: 16px;           /* Softly rounded cards */
+      --max-width: 720px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-dark);
+      line-height: 1.6;
+      padding: 0;
+      margin: 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Outer Wrapper for responsive bounds */
+    .container {
+      width: 100%;
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 28px 20px 60px 20px;
+    }
+
+    /* Section Styling */
+    section {
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(59, 122, 87, 0.05);
+    }
+
+    /* Typography Defaults - Bold & Readable */
+    h1 {
+      font-size: 2.35rem;
+      line-height: 1.25;
+      color: var(--brand-dark);
+      font-weight: 800;
+      margin-bottom: 16px;
+      letter-spacing: -0.5px;
+    }
+
+    h2 {
+      font-size: 1.5rem;
+      color: var(--brand-dark);
+      margin-bottom: 16px;
+      font-weight: 700;
+    }
+
+    p {
+      font-size: 1.08rem;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    p strong {
+      color: var(--text-dark);
+    }
+
+    /* Header / Nav Logo */
+    .brand-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .brand-logo {
+      font-weight: 900;
+      font-size: 1.5rem;
+      color: var(--brand-primary);
+      text-transform: uppercase;
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tag {
+      background: var(--brand-yellow);
+      color: var(--brand-dark);
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 4px 12px;
+      border-radius: 99px;
+      text-transform: uppercase;
+      border: 1px solid #E6D58E;
+    }
+
+    /* Section 1: Hero */
+    .hero-sub {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: var(--brand-primary);
+      margin-bottom: 20px;
+    }
+
+    /* Top Action Button */
+    .top-cta-btn {
+      display: inline-block;
+      width: 100%;
+      background: var(--brand-primary);
+      color: #FFFFFF;
+      font-size: 1.3rem;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 18px 24px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(59, 122, 87, 0.3);
+      transition: background 0.2s ease, transform 0.1s ease;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .top-cta-btn:hover, .top-cta-btn:focus {
+      background: var(--brand-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .top-cta-btn:active {
+      transform: translateY(0);
+    }
+
+    /* Interactive Map Styling */
+    .map-container-wrapper {
+      margin-top: 16px;
+    }
+
+    .map-caption {
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      background: var(--brand-yellow-light);
+      border: 1px solid #E6D58E;
+      border-bottom: none;
+      border-radius: 10px 10px 0 0;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+
+    #map {
+      width: 100%;
+      height: 360px;
+      border-radius: 0 0 10px 10px;
+      border: 1px solid #E6D58E;
+      z-index: 1;
+    }
+
+    /* Leaflet Popup Styling Customization */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-main);
+      color: var(--text-dark);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      padding: 4px;
+    }
+
+    .map-popup h4 {
+      font-size: 1rem;
+      color: var(--brand-dark);
+      margin-bottom: 4px;
+    }
+
+    .map-popup .popup-price {
+      display: inline-block;
+      background: var(--brand-yellow);
+      color: var(--brand-dark);
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .map-popup p {
+      font-size: 0.85rem;
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+    /* Section 3: Steps & Price Badge */
+    .steps-list {
+      list-style: none;
+      margin: 20px 0;
+    }
+
+    .step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .step-number {
+      background: var(--brand-primary);
+      color: #FFFFFF;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.95rem;
+      flex-shrink: 0;
+    }
+
+    .price-box {
+      background: var(--brand-yellow);
+      border: 1px solid #E6D58E;
+      border-radius: 10px;
+      padding: 18px;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    .price-box .price-title {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: var(--brand-dark);
+      letter-spacing: 0.5px;
+    }
+
+    .price-box .price-value {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: var(--brand-primary);
+      line-height: 1.1;
+      margin: 4px 0;
+    }
+
+    /* Section 4: Proof Block */
+    .proof-card {
+      background: var(--brand-yellow-light);
+      border-left: 4px solid var(--brand-primary);
+      padding: 18px;
+      border-radius: 0 10px 10px 0;
+    }
+
+    /* Section 5: Objections */
+    .faq-item {
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .faq-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .faq-question {
+      font-weight: 700;
+      color: var(--brand-dark);
+      margin-bottom: 6px;
+      font-size: 1.08rem;
+    }
+
+    /* Section 6: CTA Bottom Section */
+    .cta-section {
+      text-align: center;
+      background: var(--brand-dark);
+      color: #FFFFFF;
+    }
+
+    .cta-section h2 {
+      color: #FFFFFF;
+    }
+
+    .cta-section p {
+      color: #E2EFE7;
+    }
+
+    .guarantee-box {
+      background: rgba(255, 242, 178, 0.12);
+      border: 1px dashed var(--brand-yellow);
+      border-radius: 10px;
+      padding: 18px;
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .guarantee-box strong {
+      color: var(--brand-yellow);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .cta-button {
+      display: inline-block;
+      width: 100%;
+      background: var(--brand-primary);
+      color: #FFFFFF;
+      font-size: 1.25rem;
+      font-weight: 800;
+      text-decoration: none;
+      padding: 18px 24px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+      transition: background 0.2s ease, transform 0.1s ease;
+      text-align: center;
+    }
+
+    .cta-button:hover, .cta-button:focus {
+      background: var(--brand-primary-hover);
+      transform: translateY(-1px);
+    }
+
+    .cta-button:active {
+      transform: translateY(0);
+    }
+
+    /* Embedded Google Form Container */
+    .form-embed-wrapper {
+      width: 100%;
+      background: #FFFFFF;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 20px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .form-embed-wrapper iframe {
+      width: 100%;
+      height: 860px;
+      border: 0;
+      display: block;
+    }
+
+    .cta-note {
+      font-size: 0.9rem;
+      color: #E2EFE7;
+      margin-top: 14px;
+      margin-bottom: 0;
+    }
+
+    /* Utility */
+    .u-no-margin {
+      margin-bottom: 0;
+    }
+
+    /* Mobile Responsive Tweaks */
+    @media (max-width: 480px) {
+      h1 { font-size: 1.75rem; }
+      h2 { font-size: 1.3rem; }
+      .container { padding: 18px 12px 40px 12px; }
+      section { padding: 22px 18px; }
+      #map { height: 300px; }
+      .form-embed-wrapper iframe { height: 900px; }
+    }
+  </style>
+</head>
+<body>
+
+  <main class="container">
+
+    <!-- Header / Brand -->
+    <header class="brand-header">
+      <div class="brand-logo">Niche Eats</div>
+      <span class="brand-tag">Oahu Local</span>
+    </header>
+
+    <!-- SECTION 1: Headline & How It Works One-Liner -->
+    <section id="headline">
+      <h1>Niche Eats helps picky food lovers uncover hidden neighborhood dining spots without doing hours of online research.</h1>
+      <p class="hero-sub">An easy-to-use map featuring hidden-gem local restaurants with exact prices and real photos so you know it is good before you go.</p>
+      
+      <!-- Top CTA Button with ID for JS Scroll -->
+      <a href="#form-target" id="top-cta-btn" class="top-cta-btn">Hungry???</a>
+
+      <!-- Live OpenStreetMap Component -->
+      <div class="map-container-wrapper">
+        <div class="map-caption">📍 Live Oahu Hidden Gem Map (Tap pins for menu prices &amp; details):</div>
+        <div id="map" aria-label="Interactive OpenStreetMap of Oahu local food spots"></div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: The Customer's Problem & The Exact Moment It Goes Wrong -->
+    <section id="problem">
+      <h2>The Problem</h2>
+      <p>Finding good local restaurants across Oahu is a hard and tedious chore. You want authentic local food, but search apps flood your screen with sponsored tourist traps and generalized reviews.</p>
+      <p><strong>The exact moment it goes wrong:</strong> You are hungry right now, sitting in your car with 14 browser tabs open, scrolling through conflicting blogs from two years ago, only to drive 25 minutes and find a $22 plate lunch with a 45-minute wait.</p>
+      <p class="u-no-margin"><strong>What it costs you:</strong> Wasted evenings, empty gas tanks, hanger, and spending hard-earned money on mediocre food you didn't even enjoy.</p>
+    </section>
+
+    <!-- SECTION 3: What They Get, How It Works, Real Price -->
+    <section id="value-and-price">
+      <h2>How It Works</h2>
+      
+      <ol class="steps-list">
+        <li class="step-item">
+          <div class="step-number">1</div>
+          <div>
+            <strong>Open the map</strong>
+            <p class="u-no-margin">Filter by neighborhood anywhere on Oahu in seconds.</p>
+          </div>
+        </li>
+        <li class="step-item">
+          <div class="step-number">2</div>
+          <div>
+            <strong>See hidden neighborhood gems</strong>
+            <p class="u-no-margin">Discover quiet, non-tourist spots tested by local eaters.</p>
+          </div>
+        </li>
+        <li class="step-item">
+          <div class="step-number">3</div>
+          <div>
+            <strong>Check exact prices &amp; real photos</strong>
+            <p class="u-no-margin">Know the true menu prices and what the plate looks like before you walk in.</p>
+          </div>
+        </li>
+        <li class="step-item">
+          <div class="step-number">4</div>
+          <div>
+            <strong>Go eat delicious local food</strong>
+            <p class="u-no-margin">Skip hours of research and enjoy cheap, incredible meals instantly.</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="price-box">
+        <div class="price-title">Your Price</div>
+        <div class="price-value">$0</div>
+        <p class="u-no-margin"><strong>100% Free to use.</strong> No hidden fees. No premium paywalls.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 4: Proof -->
+    <section id="proof">
+      <h2>Proof</h2>
+      <div class="proof-card">
+        <p class="u-no-margin">Mapped 24 neighborhood spots across Oahu. Tested directly with local residents in Honolulu, Kailua, and Pearl City.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 5: The 2 Real Reasons Someone Would Not Do This -->
+    <section id="objections">
+      <h2>Honest Answers</h2>
+
+      <div class="faq-item">
+        <div class="faq-question">1. "Is this app actually 100% free or is there a trick?"</div>
+        <p class="u-no-margin">It is completely free ($0). Restaurants cannot pay us to rank higher or hide bad reviews. We built this to solve our own daily headache of finding cheap, delicious neighborhood spots across Oahu.</p>
+      </div>
+
+      <div class="faq-item">
+        <div class="faq-question">2. "Will this actually work for me, or will I waste time searching?"</div>
+        <p class="u-no-margin">It works in seconds because every spot includes verified menu prices and photos. Plus, you are backed by our personal guarantee below.</p>
+      </div>
+    </section>
+
+    <!-- SECTION 6: Sign-Up & Big Button -->
+    <section id="cta" class="cta-section">
+      <h2>Find Your Next Oahu Hidden Gem Now</h2>
+      <p>Want to get in touch with us or get immediate recommendations? Drop us a quick note below!</p>
+
+      <div class="guarantee-box">
+        <strong>Our 5-Minute Guarantee:</strong>
+        <p class="u-no-margin">If you do not find a local food spot you love within 5 minutes of searching on the app, I will personally text you 3 custom hidden-gem recommendations within 10 minutes.</p>
+      </div>
+
+      <a href="#form-target" id="main-cta-btn" class="cta-button">Get in touch</a>
+
+      <!-- Embedded Google Form Container -->
+      <div id="form-target" class="form-embed-wrapper">
+        <iframe src="https://docs.google.com/forms/d/e/1FAIpQLSeu_VlyF_AN7odkNYqBIipR162kfFcA7adHxQ4qRZ8DrDOHPQ/viewform?embedded=true" width="640" height="858" frameborder="0" marginheight="0" marginwidth="0">Loading…</iframe>
+      </div>
+
+      <p class="cta-note">Fill out the quick form above, and I will answer you within 10 minutes!</p>
+    </section>
+
+  </main>
+
+  <!-- Leaflet JS OpenStreetMap Library -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTLZBo=" crossorigin=""></script>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      console.log('Niche Eats Landing Page Loaded Successfully.');
+
+      // 1. Initialize OpenStreetMap centered on Oahu, Hawaii
+      const oahuCoords = [21.4389, -157.95];
+      const map = L.map('map', {
+        scrollWheelZoom: false // Prevent scroll interference when scrolling down page
+      }).setView(oahuCoords, 10);
+
+      // 2. Add OpenStreetMap Tile Layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }).addTo(map);
+
+      // 3. Active Local Oahu Food Spots
+      const foodSpots = [
+        {
+          name: "Giovanni's Shrimp Truck",
+          lat: 21.5833,
+          lng: -158.1039,
+          price: "$16.00 Shrimp Scampi Plate",
+          desc: "World-famous North Shore food truck serving garlic butter shrimp in Kahuku & Haleiwa."
+        },
+        {
+          name: "Jax Wood Fired Pizza",
+          lat: 21.6514,
+          lng: -158.0620,
+          price: "$18.00 Wood Fired Artisan Pizza",
+          desc: "Sharks Cove food truck serving fresh, hot wood-fired pizzas right by the beach."
+        },
+        {
+          name: "Kua 'Aina Sandwich Shop",
+          lat: 21.5910,
+          lng: -158.1066,
+          price: "$12.50 Avocado Bacon Burger",
+          desc: "Legendary Haleiwa burger joint grilling up legendary avocado burgers since 1975."
+        },
+        {
+          name: "HONOS Shrimp Truck",
+          lat: 21.5830,
+          lng: -158.1035,
+          price: "$15.00 Pineapple Butter Garlic Shrimp",
+          desc: "North Shore favorite known for savory garlic shrimp and Korean BBQ plates."
+        },
+        {
+          name: "Café Haleiwa",
+          lat: 21.5880,
+          lng: -158.1082,
+          price: "$12.00 Mahalo Breakfast Burrito",
+          desc: "Cozy historic North Shore surf café serving hearty local breakfasts and espresso."
+        },
+        {
+          name: "Honolulu Café",
+          lat: 21.3105,
+          lng: -157.8638,
+          price: "$8.50 Hong Kong Style Milk Tea & Pastry",
+          desc: "Downtown Honolulu spot famous for authentic Hong Kong coffee, tea, and baked goods."
+        },
+        {
+          name: "Ono Seafood",
+          lat: 21.2778,
+          lng: -157.8118,
+          price: "$14.00 Spicy Ahi Poke Bowl",
+          desc: "Kapahulu hole-in-the-wall loved for fresh, made-to-order Hawaiian poke bowls."
+        },
+        {
+          name: "Lanikai Juice",
+          lat: 21.3916,
+          lng: -157.7428,
+          price: "$10.50 Fresh Acai Bowl",
+          desc: "Kailua favorite serving fresh organic smoothies, juices, and acai bowls."
+        },
+        {
+          name: "Teppanyaki Farmer",
+          lat: 21.2970,
+          lng: -157.8428,
+          price: "$14.00 Ribeye Steak Roll",
+          desc: "Ala Moana food court gem serving griddled teppan steak rolls with garlic sauce."
+        },
+        {
+          name: "Lin's Hawaiian Snacks",
+          lat: 21.3117,
+          lng: -157.8631,
+          price: "$5.00 Li Hing Mui Candies",
+          desc: "Kaimukī/Honolulu staple for local dried fruits, crack seed, and island treats."
+        },
+        {
+          name: "Ululani's Hawaiian Shave Ice",
+          lat: 21.2764,
+          lng: -157.8122,
+          price: "$7.50 Micro-Filtered Shave Ice",
+          desc: "Ultra-fine shave ice made with 100% pure cane sugar syrups and local juices."
+        },
+        {
+          name: "Nalu Health Bar & Cafe",
+          lat: 21.3920,
+          lng: -157.7410,
+          price: "$12.00 Nalu Acai Bowl",
+          desc: "Kailua and Ward cafe serving fresh smoothies, acai bowls, and healthy wraps."
+        },
+        {
+          name: "Thắng's French Coffee & Bubble Tea",
+          lat: 21.3120,
+          lng: -157.8610,
+          price: "$5.50 Vietnamese Iced Coffee",
+          desc: "Authentic Vietnamese drip coffee, bubble tea, and fresh baked bành mì."
+        },
+        {
+          name: "The Elephant Shack",
+          lat: 21.5794,
+          lng: -158.1062,
+          price: "$14.00 Pad Thai",
+          desc: "North Shore Thai food truck favorite serving fresh, made-from-scratch curries."
+        },
+        {
+          name: "Sikdorak Korean Restaurant",
+          lat: 21.2982,
+          lng: -157.8415,
+          price: "$28.00 All-You-Can-Eat K-BBQ",
+          desc: "Honolulu hotspot for late-night Korean BBQ, banchan, and grilled meats."
+        },
+        {
+          name: "Forty Niner Restaurant",
+          lat: 21.3855,
+          lng: -157.9422,
+          price: "$11.50 Forty Niner Pancakes",
+          desc: "Aiea diner serving local breakfast classics and haupia mac nut pancakes since 1947."
+        },
+        {
+          name: "Adela's Country Eatery",
+          lat: 21.4172,
+          lng: -157.8028,
+          price: "$16.50 Homemade Taro Noodle Pasta",
+          desc: "Kaneohe gem making fresh local noodles out of taro, ube, and breadfruit daily."
+        },
+        {
+          name: "Masa & Joyce Okazuya",
+          lat: 21.4185,
+          lng: -157.8041,
+          price: "$9.00 Mixed Okazu Box",
+          desc: "Classic Windward okazuya deli serving fried chicken, chow mein, and musubis."
+        },
+        {
+          name: "Easy 'Que",
+          lat: 21.3912,
+          lng: -157.7405,
+          price: "$15.00 Smoked Pulled Pork Plate",
+          desc: "Kailua smokehouse fusing Southern BBQ style with island flavors and sides."
+        },
+        {
+          name: "Boston's Pizza Kaimukī",
+          lat: 21.2848,
+          lng: -157.8122,
+          price: "$7.50 Giant Pizza Slice",
+          desc: "Kaimukī institution serving massive, piping-hot New York style pizza slices."
+        },
+        {
+          name: "Tight Tacos Kaimukī",
+          lat: 21.2841,
+          lng: -157.8130,
+          price: "$4.25 Street Tacos",
+          desc: "Kaimukī street taco spot serving handmade tortillas and authentic braised meats."
+        },
+        {
+          name: "Saito & Pho",
+          lat: 21.4168,
+          lng: -157.8032,
+          price: "$14.50 Combination Pho Bowl",
+          desc: "Kaneohe neighborhood gem for comforting Vietnamese pho and authentic broths."
+        },
+        {
+          name: "Paia Fish Market",
+          lat: 21.2952,
+          lng: -157.8542,
+          price: "$17.00 Fresh Fish Burger & Fries",
+          desc: "Casual Ward/Kaka'ako spot serving fresh-caught fish plates and burgers."
+        },
+        {
+          name: "Pioneer Saloon",
+          lat: 21.2725,
+          lng: -157.8138,
+          price: "$16.00 Garlic Ahi Plate",
+          desc: "Diamond Head neighborhood favorite for Japanese-influenced gourmet plate lunches."
+        },
+        {
+          name: "Chile Relleno",
+          lat: 21.3255,
+          lng: -157.8615,
+          price: "$12.50 Authentic Chile Relleno Plate",
+          desc: "Local favorite Mexican spot known for homemade poblano chile relleno plates."
+        },
+        {
+          name: "7 GRADI Gelato",
+          lat: 21.2844,
+          lng: -157.8126,
+          price: "$7.00 Artisanal Gelato",
+          desc: "Artisanal, handcrafted Italian gelato made fresh daily in Kaimukī."
+        },
+        {
+          name: "K. Bay Bros Fish & Ice",
+          lat: 21.4182,
+          lng: -157.8038,
+          price: "$13.00 Fresh Poke Bowl",
+          desc: "Kaneohe local favorite serving super fresh island poke and fresh catch."
+        },
+        {
+          name: "Poke on Da Run",
+          lat: 21.3965,
+          lng: -157.9735,
+          price: "$15.50 Poke Nachos",
+          desc: "Pearl City gem famous for their loaded poke nachos on wonton chips."
+        },
+        {
+          name: "Helena's Hawaiian Food",
+          lat: 21.3328,
+          lng: -157.8683,
+          price: "$14.50 Kalua Pig & Pipikaula",
+          desc: "Kalihi institution serving traditional, authentic Hawaiian food since 1946."
+        },
+        {
+          name: "Rainbow Drive-In",
+          lat: 21.2758,
+          lng: -157.8123,
+          price: "$12.25 Loco Moco Plate",
+          desc: "Iconic Kapahulu drive-in serving hearty local comfort food since 1961."
+        },
+        {
+          name: "Keneke's Grill",
+          lat: 21.3385,
+          lng: -157.6970,
+          price: "$11.00 Chicken Katsu Plate",
+          desc: "Windward favorite in Waimanalo offering massive local plate lunches."
+        },
+        {
+          name: "Ted's Bakery",
+          lat: 21.6888,
+          lng: -158.0465,
+          price: "$13.50 Garlic Shrimp Plate",
+          desc: "Famous North Shore bakery near Sunset Beach known for pies and local plates."
+        },
+        {
+          name: "Highway Inn",
+          lat: 21.3861,
+          lng: -158.0089,
+          price: "$15.00 Laulau Combo",
+          desc: "Waipahu family spot serving authentic Hawaiian classics since 1947."
+        },
+        {
+          name: "Waialua Bakery & Juice Bar",
+          lat: 21.5742,
+          lng: -158.1186,
+          price: "$8.50 Turkey Sandwich",
+          desc: "Fresh, affordable local sandwiches, baked breads, and smoothies near Haleiwa."
+        }
+      ];
+
+      foodSpots.forEach(function(spot) {
+        const marker = L.marker([spot.lat, spot.lng]).addTo(map);
+        const popupContent = `
+          <div class="map-popup">
+            <h4>${spot.name}</h4>
+            <div class="popup-price">${spot.price}</div>
+            <p>${spot.desc}</p>
+          </div>
+        `;
+        marker.bindPopup(popupContent);
+      });
+
+      // 4. Smooth Scroll Handler for Both Buttons ("Hungry??" and "Get in touch")
+      function scrollToForm(e) {
+        e.preventDefault();
+        console.log('Button clicked. Scrolling to sign-up form.');
+        const formTarget = document.getElementById('form-target');
+        if (formTarget) {
+          formTarget.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+
+      const topCtaButton = document.getElementById('top-cta-btn');
+      if (topCtaButton) {
+        topCtaButton.addEventListener('click', scrollToForm);
+      }
+
+      const ctaButton = document.getElementById('main-cta-btn');
+      if (ctaButton) {
+        ctaButton.addEventListener('click', scrollToForm);
+      }
+    });
+  </script>
+</body>
+</html>
